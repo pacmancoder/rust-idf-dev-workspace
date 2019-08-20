@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+    "idf-config-stub",
+    "idf-sys",
+    "idf-hal",
+    "idf-playground"
+]

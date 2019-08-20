@@ -4,4 +4,9 @@ version = "0.1.0"
 authors = ["Vladislav Nikonov <pacmancoder@gmail.com>"]
 edition = "2018"
 
-[dependencies]
+[lib]
+name = "firmware"
+crate-type = ["staticlib"]
+
+[target.xtensa-esp8266-none-elf.dependencies]
+panic-halt = "0.2.0"
