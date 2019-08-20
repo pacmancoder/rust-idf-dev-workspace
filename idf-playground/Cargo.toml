@@ -8,5 +8,8 @@ edition = "2018"
 name = "firmware"
 crate-type = ["staticlib"]
 
+[dependencies]
+idf-sys = { git = "https://github.com/rust-idf/rust-idf-sys" }
+
 [target.xtensa-esp8266-none-elf.dependencies]
 panic-halt = "0.2.0"

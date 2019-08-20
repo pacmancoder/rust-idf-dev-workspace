@@ -6,3 +6,6 @@ members = [
     "idf-hal",
     "idf-playground"
 ]
+
+[patch.'https://github.com/rust-idf/rust-idf-sys']
+idf-sys = { path = 'idf-sys' }
