@@ -1,0 +1,7 @@
+[package]
+name = "idf-playground"
+version = "0.1.0"
+authors = ["Vladislav Nikonov <pacmancoder@gmail.com>"]
+edition = "2018"
+
+[dependencies]

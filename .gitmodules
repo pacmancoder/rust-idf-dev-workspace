@@ -1,0 +1,9 @@
+[submodule "idf-sys"]
+	path = idf-sys
+	url = git@github.com:rust-idf/rust-idf-sys.git
+[submodule "idf-hal"]
+	path = idf-hal
+	url = git@github.com:rust-idf/rust-idf-hal.git
+[submodule "idf-config-stub"]
+	path = idf-config-stub
+	url = git@github.com:rust-idf/rust-idf-config-stub.git
