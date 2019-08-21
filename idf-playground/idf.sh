@@ -1,12 +1,35 @@
 #!/bin/bash
 
+# This script requires following variables to be set:
+# 
+# $IDF_PATH -- Should point to ESP8266/ESP32 IDF folder
+# $CARGO_RUST_SRC -- Should point to src folder of active
+#     custom xtensa toolchain
+# $PATH -- Should contain ESP8266/ESP32 toolchain in it
+# $RUSTUP_XTENSA_TOOLCHAIN -- [optional] Should contain
+#     name of custom xtensa rust toolchain name. Allows
+#     to switch to xtensa toolchain automatically during
+#     the build. After script finishes, default toolchain
+#     will be returned back
+
 ORIGINAL_CWD=$(pwd)
 ORIGINAL_RUSTFLAGS=$RUSTFLAGS
+
+USE_RUSTUP="false"
+
+if [[ -n $RUSTUP_XTENSA_TOOLCHAIN ]]; then
+    USE_RUSTUP="true"
+    RUSTUP_DEFAULT_TOOLCHAIN=$(rustup toolchain list | grep default | cut -d " " -f 1)
+fi
 
 function restore_env()
 {
     cd $ORIGINAL_CWD
     export RUSTFLAGS=$ORIGINAL_RUSTFLAGS
+
+    if [[ $USE_RUSTUP == "true" ]]; then
+        rustup default $RUSTUP_DEFAULT_TOOLCHAIN
+    fi
 }
 
 function terminate()
@@ -32,6 +55,12 @@ function run_rust_build()
     if [[ $? != 0 ]]; then
         terminate "Cant find xtensa toolchain in path";
     fi
+
+    if [[ $USE_RUSTUP == "true" ]]; then
+        print_stage "Switching rustup..."
+	rustup default $RUSTUP_XTENSA_TOOLCHAIN
+    fi
+
 
     print_stage "Building rust code..."
 
