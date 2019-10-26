@@ -20,14 +20,13 @@ extern "C" fn app_main() {
         .password("mypassword")
         .build().ok().unwrap();
 
-    let wifi_configurator = WiFiHardware::new(peripherals.wifi)
+    let mut wifi = WiFiHardware::new(peripherals.wifi)
         .initialize()
         .ok().unwrap();
 
-    let _wifi = wifi_configurator
-        .set_ap_config(ap_config)
-        .start()
-        .ok().unwrap();
+    wifi.set_ap_config(ap_config).ok().unwrap();
+    wifi.set_mode(WiFiMode::Ap).ok().unwrap();
+    wifi.start().ok().unwrap();
 
     let gpio = GpioHardware::new(peripherals.gpio);
 
