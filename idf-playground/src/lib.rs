@@ -5,8 +5,10 @@ extern crate panic_halt;
 
 use idf_hal::{
     peripherals::*,
-    wifi::*
+    wifi::*,
+    gpio::*,
 };
+use idf_hal::gpio::{GpioHardware, PinInitializer};
 
 #[no_mangle]
 extern "C" fn app_main() {
@@ -26,4 +28,14 @@ extern "C" fn app_main() {
         .set_ap_config(ap_config)
         .start()
         .ok().unwrap();
+
+    let gpio = GpioHardware::new(peripherals.gpio);
+
+    let mut rled_gpio = PinInitializer::new(gpio.gpio12).configure_as_output().init();
+    let mut gled_gpio = PinInitializer::new(gpio.gpio14).configure_as_output().init();
+    let mut bled_gpio = PinInitializer::new(gpio.gpio13).configure_as_output().init();
+
+    rled_gpio.set_level(true);
+    gled_gpio.set_level(true);
+    bled_gpio.set_level(true);
 }
