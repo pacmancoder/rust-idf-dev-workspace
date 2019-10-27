@@ -8,6 +8,8 @@ use idf_hal::{
     wifi::*,
     gpio::*,
     pwm::*,
+    freertos::*,
+    watchdog::*,
 };
 use idf_hal::gpio::{GpioHardware, PinInitializer};
 
@@ -76,11 +78,13 @@ extern "C" fn app_main() {
 
     let mut red_led_gpio = PinInitializer::new(gpio.gpio12).configure_as_output().init();
 
-    if init_pwm(gpio.gpio14, gpio.gpio13).is_err() {
-        red_led_gpio.set_level(true);
-    } else {
-        red_led_gpio.set_level(false);
-    }
+    let mut pwm = init_pwm(gpio.gpio14, gpio.gpio13).ok().unwrap();
 
-    loop {};
+    delay_ms(3000);
+    pwm.stop();
+
+    loop {
+        task_yield();
+        reset_watchdog();
+    };
 }
