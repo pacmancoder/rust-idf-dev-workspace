@@ -74,11 +74,11 @@ extern "C" fn app_main() {
     wifi.set_mode(WiFiMode::Ap).ok().unwrap();
     wifi.start().ok().unwrap();
 
-    let gpio = GpioHardware::new(peripherals.gpio);
+    let mut gpio = GpioHardware::new(peripherals.gpio);
 
-    let mut red_led_gpio = PinInitializer::new(gpio.gpio12).configure_as_output().init();
+    let mut red_led_gpio = PinInitializer::new(gpio.gpio12.take().unwrap()).configure_as_output().init();
 
-    let mut pwm = init_pwm(gpio.gpio14, gpio.gpio13).ok().unwrap();
+    let mut pwm = init_pwm(gpio.gpio14.take().unwrap(), gpio.gpio13.take().unwrap()).ok().unwrap();
 
     delay_ms(3000);
     pwm.stop();
