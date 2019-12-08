@@ -10,6 +10,7 @@ use idf_hal::{
     pwm::*,
     freertos::*,
     watchdog::*,
+    uart::*,
 };
 use idf_hal::gpio::{GpioHardware, PinInitializer};
 
@@ -25,6 +26,12 @@ impl From<PwmInitializationError> for AppError {
 
 impl From<PwmConfigurationError> for AppError {
     fn from(err: PwmConfigurationError) -> Self {
+        AppError::Unknown
+    }
+}
+
+impl From<UartConfigError> for AppError {
+    fn from(err: UartConfigError) -> Self {
         AppError::Unknown
     }
 }
@@ -56,6 +63,10 @@ fn init_pwm<C1, C2>(channel1 : C1, channel2: C2) -> Result<Pwm, AppError>
     Ok(pwm)
 }
 
+fn init_uart0(hw: Uart0Hardware, gpio_hw: &mut GpioHardware) -> Result<Uart0, AppError> {
+    Ok(UartInitializer::new(hw).initialize(gpio_hw)?)
+}
+
 #[no_mangle]
 extern "C" fn app_main() {
     let peripherals = Peripherals::take().unwrap();
@@ -83,8 +94,26 @@ extern "C" fn app_main() {
     delay_ms(3000);
     pwm.stop();
 
+    let mut uart = init_uart0(UartHardware::new(peripherals.uart).uart0.unwrap(), &mut gpio)
+        .ok().unwrap();
+
     loop {
         task_yield();
         reset_watchdog();
+
+        uart.write_bytes("hello".as_bytes());
+        delay_ms(1000);
+
+        let mut ch = [0_u8; 1];
+        loop {
+            match uart.read_bytes(&mut ch, 1000) {
+                Ok(_) => {
+                    ch[0] += 1;
+                    uart.write_bytes(&ch);
+                }
+                _ => {}
+            }
+        }
+
     };
 }
