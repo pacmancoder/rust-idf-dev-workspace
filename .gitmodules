@@ -7,3 +7,6 @@
 [submodule "idf-config-stub"]
 	path = idf-config-stub
 	url = git@github.com:rust-idf/rust-idf-config-stub.git
+[submodule "idf-alloc"]
+	path = idf-alloc
+	url = git@github.com:rust-idf/rust-idf-alloc.git

@@ -4,7 +4,8 @@ members = [
     "idf-config-stub",
     "idf-sys",
     "idf-hal",
-    "idf-playground"
+    "idf-playground",
+    "idf-alloc"
 ]
 
 [patch.'https://github.com/rust-idf/rust-idf-sys']
@@ -12,3 +13,6 @@ idf-sys = { path = 'idf-sys' }
 
 [patch.'https://github.com/rust-idf/rust-idf-hal']
 idf-hal = { path = 'idf-hal' }
+
+[patch.'https://github.com/rust-idf/rust-idf-alloc']
+idf-alloc = { path = 'idf-alloc' }

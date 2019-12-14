@@ -1,7 +1,50 @@
+#![feature(alloc_error_handler)]
+
 #![cfg_attr(target_arch = "xtensa", no_std)]
 
 #[cfg(target_arch = "xtensa")]
 extern crate panic_halt;
+
+extern crate alloc;
+
+
+#[cfg(target_arch = "xtensa")]
+mod custom_allocator {
+    use idf_alloc::IdfAllocator;
+
+    use core::alloc::{GlobalAlloc, Layout};
+
+    #[global_allocator]
+    static GLOBAL_ALLOCATOR: IdfAllocator = IdfAllocator;
+
+    #[no_mangle]
+    pub unsafe fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
+        GLOBAL_ALLOCATOR.alloc( Layout::from_size_align_unchecked(size, align))
+    }
+
+    #[no_mangle]
+    pub unsafe fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
+        GLOBAL_ALLOCATOR.dealloc(ptr, Layout::from_size_align_unchecked(size, align))
+    }
+
+    #[no_mangle]
+    pub unsafe fn __rust_realloc(ptr: *mut u8,
+                                 old_size: usize,
+                                 align: usize,
+                                 new_size: usize
+    ) -> *mut u8 {
+        GLOBAL_ALLOCATOR.realloc(ptr, Layout::from_size_align_unchecked(old_size, align), new_size)
+    }
+
+    #[no_mangle]
+    pub unsafe fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+        GLOBAL_ALLOCATOR.alloc_zeroed(Layout::from_size_align_unchecked(size, align))
+    }
+
+
+    #[alloc_error_handler]
+    fn rust_idf_oom_error_handler(info: Layout) -> ! { panic!("Out of memory error!"); }
+}
 
 use idf_hal::{
     peripherals::*,
@@ -12,7 +55,8 @@ use idf_hal::{
     watchdog::*,
     uart::*,
 };
-use idf_hal::gpio::{GpioHardware, PinInitializer};
+
+use alloc::string::String;
 
 enum AppError {
     Unknown,
@@ -71,6 +115,8 @@ fn init_uart0(hw: Uart0Hardware, gpio_hw: &mut GpioHardware) -> Result<Uart0, Ap
 extern "C" fn app_main() {
     let peripherals = Peripherals::take().unwrap();
 
+    // TODO: Fix WiFi after SDK v3.3 migration
+    /*
     let ap_config = WiFiApConfigurationBuilder::new()
         .ssid("Привет, мир!")
         .auth_mode(WiFiAuthMode::Wpa2Psk)
@@ -84,7 +130,7 @@ extern "C" fn app_main() {
     wifi.set_ap_config(ap_config).ok().unwrap();
     wifi.set_mode(WiFiMode::Ap).ok().unwrap();
     wifi.start().ok().unwrap();
-
+    */
     let mut gpio = GpioHardware::new(peripherals.gpio);
 
     let mut red_led_gpio = PinInitializer::new(gpio.gpio12.take().unwrap()).configure_as_output().init();
@@ -97,23 +143,14 @@ extern "C" fn app_main() {
     let mut uart = init_uart0(UartHardware::new(peripherals.uart).uart0.unwrap(), &mut gpio)
         .ok().unwrap();
 
+    let test_string = String::from("hello world!\n");
+
     loop {
         task_yield();
         reset_watchdog();
 
-        uart.write_bytes("hello".as_bytes());
+        uart.write_bytes(test_string.as_bytes());
         delay_ms(1000);
-
-        let mut ch = [0_u8; 1];
-        loop {
-            match uart.read_bytes(&mut ch, 1000) {
-                Ok(_) => {
-                    ch[0] += 1;
-                    uart.write_bytes(&ch);
-                }
-                _ => {}
-            }
-        }
-
     };
+
 }

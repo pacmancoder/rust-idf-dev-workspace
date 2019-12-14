@@ -4,3 +4,4 @@
 /idf-build/
 /.idea/
 *~
+build/

@@ -1,0 +1,2 @@
+[target.xtensa-esp8266-none-elf.dependencies]
+alloc = {}
