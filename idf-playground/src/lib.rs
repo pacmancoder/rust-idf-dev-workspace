@@ -7,6 +7,18 @@ extern crate panic_halt;
 
 extern crate alloc;
 
+use idf_hal::{
+    peripherals::*,
+    wifi::*,
+    gpio::*,
+    pwm::*,
+    watchdog::*,
+    uart::*,
+};
+
+use alloc::string::String;
+use freertos_rs::{TaskBuilder, Task, CurrentTask, Duration};
+
 
 #[cfg(target_arch = "xtensa")]
 mod custom_allocator {
@@ -28,10 +40,11 @@ mod custom_allocator {
     }
 
     #[no_mangle]
-    pub unsafe fn __rust_realloc(ptr: *mut u8,
-                                 old_size: usize,
-                                 align: usize,
-                                 new_size: usize
+    pub unsafe fn __rust_realloc(
+        ptr: *mut u8,
+        old_size: usize,
+        align: usize,
+        new_size: usize
     ) -> *mut u8 {
         GLOBAL_ALLOCATOR.realloc(ptr, Layout::from_size_align_unchecked(old_size, align), new_size)
     }
@@ -45,18 +58,6 @@ mod custom_allocator {
     #[alloc_error_handler]
     fn rust_idf_oom_error_handler(info: Layout) -> ! { panic!("Out of memory error!"); }
 }
-
-use idf_hal::{
-    peripherals::*,
-    wifi::*,
-    gpio::*,
-    pwm::*,
-    freertos::*,
-    watchdog::*,
-    uart::*,
-};
-
-use alloc::string::String;
 
 enum AppError {
     Unknown,
@@ -84,7 +85,7 @@ impl From<UartConfigError> for AppError {
 fn init_pwm<C1, C2>(channel1 : C1, channel2: C2) -> Result<Pwm, AppError>
     where C1: GpioPin + PwmPinMarker, C2: GpioPin + PwmPinMarker
 {
-    let period = 1000 * 500; // 500 ms
+    let period = 1000 * 100; // 500 ms
     let duty_channel1 = period / 2;
     let duty_channel2 = period / 4;
 
@@ -136,21 +137,35 @@ extern "C" fn app_main() {
     let mut red_led_gpio = PinInitializer::new(gpio.gpio12.take().unwrap()).configure_as_output().init();
 
     let mut pwm = init_pwm(gpio.gpio14.take().unwrap(), gpio.gpio13.take().unwrap()).ok().unwrap();
-
-    delay_ms(3000);
-    pwm.stop();
+    pwm.start();
 
     let mut uart = init_uart0(UartHardware::new(peripherals.uart).uart0.unwrap(), &mut gpio)
         .ok().unwrap();
 
-    let test_string = String::from("hello world!\n");
+    let test_string = String::from("hello world!\r\n");
+
+    Task::new().name("test_task").start(move || {
+        let mut led_state = true;
+
+        loop {
+            // yield
+            CurrentTask::delay(Duration::zero());
+            reset_watchdog();
+
+            red_led_gpio.set_level(led_state);
+            led_state = !led_state;
+
+            CurrentTask::delay(Duration::ms(1000));
+        }
+    }).ok().unwrap();
 
     loop {
-        task_yield();
+        CurrentTask::delay(Duration::zero());
         reset_watchdog();
 
         uart.write_bytes(test_string.as_bytes());
-        delay_ms(1000);
+
+        CurrentTask::delay(Duration::ms(500));
     };
 
 }

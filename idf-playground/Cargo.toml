@@ -11,6 +11,7 @@ crate-type = ["staticlib"]
 [dependencies]
 idf-hal = { git = "https://github.com/rust-idf/rust-idf-hal" }
 idf-alloc = { git = "https://github.com/rust-idf/rust-idf-alloc" }
+freertos_rs = "0.3.0"
 
 [target.xtensa-esp8266-none-elf.dependencies]
 panic-halt = "0.2.0"
