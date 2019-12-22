@@ -27,6 +27,7 @@ dependencies = [
  "freertos_rs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "idf-alloc 0.1.0",
  "idf-hal 0.1.0",
+ "idf-sys 0.1.0",
  "panic-halt 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
