@@ -15,13 +15,8 @@ use idf_hal::{
     pwm::*,
     watchdog::*,
     uart::*,
-};
-
-use idf_sys::{
-    error::*,
+    nvs::*,
     system_event::*,
-    wifi::*,
-    network_adapter::*,
 };
 
 use alloc::string::String;
@@ -122,84 +117,39 @@ fn init_uart0(hw: Uart0Hardware, gpio_hw: &mut GpioHardware) -> Result<Uart0, Ap
     Ok(UartInitializer::new(hw).initialize(gpio_hw)?)
 }
 
-
-const ESP_ERR_NVS_NO_FREE_PAGES: i32 = 0x1100 + 0x0d;
-
-pub type system_event_cb_t = ::core::option::Option<
-    unsafe extern "C" fn(ctx: *mut xtensa_void, event: *mut system_event_t) -> esp_err_t,
->;
-
-extern "C" {
-    pub fn esp_event_loop_init(
-        cb: system_event_cb_t,
-        ctx: *mut xtensa_void,
-    ) -> esp_err_t;
-}
-
-
-extern "C" {
-    fn nvs_flash_init() -> esp_err_t;
-    fn nvs_flash_erase() -> esp_err_t;
-
-}
-
-
-fn init_nvs() {
-    unsafe {
-        if nvs_flash_init() == ESP_ERR_NVS_NO_FREE_PAGES {
-            if nvs_flash_erase() != esp_err_t_ESP_OK {
-                panic!("Can't erase NVS")
-            }
-            if nvs_flash_init() != esp_err_t_ESP_OK {
-                panic!("Can't initialize NVS");
-            }
-        }
-    }
-}
-
 static mut gWifi: Option<WiFi> = None;
 static mut gUart: Option<Uart0> = None;
 
-unsafe extern "C" fn event_loop(ctx: *mut xtensa_void, event: *mut system_event_t) -> esp_err_t {
-    match (*event).event_id {
-        system_event_id_t_SYSTEM_EVENT_STA_START => {
-            gWifi.as_mut().unwrap().connect();
-            gUart.as_mut().unwrap().write_bytes("STA STARTED!!!!\n".as_bytes());
-        }
-        system_event_id_t_SYSTEM_EVENT_STA_GOT_IP => {
-            gUart.as_mut().unwrap().write_bytes("GOT IP!!!!\n".as_bytes());
-        }
-        system_event_id_t_SYSTEM_EVENT_STA_DISCONNECTED => {
-            if (*event).event_info.disconnected.reason as u32
-                == wifi_err_reason_t_WIFI_REASON_BASIC_RATE_NOT_SUPPORT
-            {
-                esp_wifi_set_protocol(
-                    esp_interface_t_ESP_IF_WIFI_STA,
-                    (WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N) as u8
-                );
-
-            }
-            gWifi.as_mut().unwrap().connect();
-            gUart.as_mut().unwrap().write_bytes("RECONNECTION BECAUSE OF BGN!!!!\n".as_bytes());
-        }
-        _ => {}
-    };
-
-    esp_err_t_ESP_OK
-}
-
 fn init_event_loop() {
-    unsafe {
-        esp_event_loop_init(Some(event_loop), null_mut());
-    }
+    set_event_loop(move |event| {
+        let mut wifi = unsafe { gWifi.as_mut().unwrap() };
+        let mut uart = unsafe { gUart.as_mut().unwrap() };
+
+        match event {
+            SystemEvent::StaStarted => {
+                wifi.connect();
+                uart.write_bytes("STA STARTED!!!!\n".as_bytes());
+            },
+            SystemEvent::StaConnected(_) => {
+                uart.write_bytes("GOT IP!!!!\n".as_bytes());
+            },
+            SystemEvent::StaDisconnected(eventInfo) => {
+                if eventInfo.reason == StaDisconnectReason::BasicRateIsNotSupported {
+                    wifi.switch_sta_to_bgn_mode();
+                }
+            },
+            SystemEvent::Unknown => {},
+        };
+    })
 }
 
 #[no_mangle]
 extern "C" fn app_main() {
-    init_nvs();
     init_event_loop();
 
     let peripherals = Peripherals::take().unwrap();
+
+    Nvs::init(peripherals.nvs).init_partition(PartitionId::default()).ok().unwrap();
 
     let mut gpio = GpioHardware::new(peripherals.gpio);
 
