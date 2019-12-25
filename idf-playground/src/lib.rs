@@ -5,7 +5,6 @@
 #[cfg(target_arch = "xtensa")]
 extern crate panic_halt;
 
-#[macro_use]
 extern crate alloc;
 
 use idf_hal::{
@@ -19,10 +18,10 @@ use idf_hal::{
     system_event::*,
 };
 
-use alloc::string::String;
-use freertos_rs::{TaskBuilder, Task, CurrentTask, Duration};
-use idf_sys::ffi::xtensa_void;
-use core::ptr::null_mut;
+
+use freertos_rs::{Task, CurrentTask, Duration};
+
+
 
 
 #[cfg(target_arch = "xtensa")]
@@ -69,13 +68,13 @@ enum AppError {
 }
 
 impl From<PwmInitializationError> for AppError {
-    fn from(err: PwmInitializationError) -> Self {
+    fn from(_err: PwmInitializationError) -> Self {
         AppError::Unknown
     }
 }
 
 impl From<PwmConfigurationError> for AppError {
-    fn from(err: PwmConfigurationError) -> Self {
+    fn from(_err: PwmConfigurationError) -> Self {
         AppError::Unknown
     }
 }
@@ -117,25 +116,25 @@ fn init_uart0(hw: Uart0Hardware, gpio_hw: &mut GpioHardware) -> Result<Uart0, Ap
     Ok(UartInitializer::new(hw).initialize(gpio_hw)?)
 }
 
-static mut gWifi: Option<WiFi> = None;
-static mut gUart: Option<Uart0> = None;
+static mut G_WIFI: Option<WiFi> = None;
+static mut G_UART: Option<Uart0> = None;
 
 fn init_event_loop() {
     set_event_loop(move |event| {
-        let mut wifi = unsafe { gWifi.as_mut().unwrap() };
-        let mut uart = unsafe { gUart.as_mut().unwrap() };
+        let wifi = unsafe { G_WIFI.as_mut().unwrap() };
+        let uart = unsafe { G_UART.as_mut().unwrap() };
 
         match event {
             SystemEvent::StaStarted => {
-                wifi.connect();
+                wifi.connect().ok().unwrap();
                 uart.write_bytes("STA STARTED!!!!\n".as_bytes());
             },
             SystemEvent::StaConnected(_) => {
                 uart.write_bytes("GOT IP!!!!\n".as_bytes());
             },
-            SystemEvent::StaDisconnected(eventInfo) => {
-                if eventInfo.reason == StaDisconnectReason::BasicRateIsNotSupported {
-                    wifi.switch_sta_to_bgn_mode();
+            SystemEvent::StaDisconnected(event_info) => {
+                if event_info.reason == StaDisconnectReason::BasicRateIsNotSupported {
+                    wifi.switch_sta_to_bgn_mode().ok().unwrap();
                 }
             },
             SystemEvent::Unknown => {},
@@ -153,7 +152,7 @@ extern "C" fn app_main() {
 
     let mut gpio = GpioHardware::new(peripherals.gpio);
 
-    let mut uart = init_uart0(UartHardware::new(peripherals.uart).uart0.unwrap(), &mut gpio)
+    let uart = init_uart0(UartHardware::new(peripherals.uart).uart0.unwrap(), &mut gpio)
         .ok().unwrap();
 
     let ap_config = WiFiApConfigurationBuilder::new()
@@ -176,8 +175,8 @@ extern "C" fn app_main() {
         .start().ok().unwrap();
 
     unsafe {
-        gWifi = Some(wifi);
-        gUart = Some(uart);
+        G_WIFI = Some(wifi);
+        G_UART = Some(uart);
     };
 
 
